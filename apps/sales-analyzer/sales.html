@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dakota AI Demos - Sales Data Cleaner</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/papaparse/papaparse.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5; }
+        .container { max-width: 1400px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1 { color: #333; text-align: center; }
+        #dataTable, #cleanedTable { border-collapse: collapse; width: 100%; margin: 20px 0; }
+        #dataTable th, #dataTable td, #cleanedTable th, #cleanedTable td { border: 1px solid #ddd; padding: 6px; text-align: left; }
+        #dataTable th { background-color: #f2f2f2; }
+        #cleanedTable thead tr { background-color: #e0f7e0; }
+        #stats { margin: 20px 0; }
+        .chart-container { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
+        canvas { width: 80vw; height: 50vh; max-width: 400px; max-height: 300px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Dakota AI Demo: Sales Data Cleaner and Trend Analyzer</h1>
+        <p>This demo loads messy sales data, performs automated cleaning (removes duplicates, fills missing values), applies statistical models (average sales by region), and visualizes trends.</p>
+        <button onclick="loadAndCleanDataset()">Load and Clean Dataset</button>
+        <div id="stats"></div>
+        <canvas id="comparisonChart"></canvas>
+        <h2>Raw Data</h2>
+        <table id="dataTable"></table>
+        <h2>Cleaned Data</h2>
+        <table id="cleanedTable"></table>
+    </div>
+
+    <script>
+        let chart;
+
+        function loadAndCleanDataset() {
+            fetch('sales_data.csv')
+                .then(response => response.text())
+                .then(csvText => {
+                    Papa.parse(csvText, {
+                        header: true,
+                        complete: function(results) {
+                            const rawData = results.data;
+                            const cleanedData = cleanData(rawData);
+                            processCleanedData(cleanedData, rawData);
+                        }
+                    });
+                });
+        }
+
+        function cleanData(data) {
+            // Remove invalid rows (empty OrderDate or false data)
+            let uniqueData = data.filter(row =>
+                (row.OrderDate && row.OrderDate !== '' && !row.OrderDate.includes('false')) &&
+                (row.Region && row.Region !== '')
+            );
+
+            // Remove duplicates based on all columns
+            const seen = new Set();
+            uniqueData = uniqueData.filter(row => {
+                const key = JSON.stringify(row);
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+
+            // Fill missing Sales with mean
+            const sales = uniqueData.map(row => row.Sales && row.Sales !== '' ? parseFloat(row.Sales) : null).filter(s => s !== null);
+            const salesMean = sales.reduce((a,b)=>a+b,0)/sales.length;
+            uniqueData = uniqueData.map(row => {
+                if (!row.Sales || row.Sales === '') {
+                    row.Sales = salesMean.toFixed(2);
+                }
+                return row;
+            });
+
+            // Fill missing Quantity with median
+            const quantities = uniqueData.map(row => row.Quantity && row.Quantity !== '' ? parseFloat(row.Quantity) : null).filter(q => q !== null).sort((a,b)=>a-b);
+            const median = quantities.length % 2 === 0 ? (quantities[quantities.length/2 -1] + quantities[quantities.length/2])/2 : quantities[Math.floor(quantities.length/2)];
+            uniqueData = uniqueData.map(row => {
+                if (!row.Quantity || row.Quantity === '') {
+                    row.Quantity = Math.round(median);
+                }
+                return row;
+            });
+
+            // Remove outliers: Sales out of 0-10000 range, Quantity > 200, negative values, zero sales
+            uniqueData = uniqueData.filter(row => {
+                const salesVal = parseFloat(row.Sales);
+                const qtyVal = parseFloat(row.Quantity);
+                return salesVal >= 1 && salesVal <= 10000 && qtyVal <= 200 && qtyVal > 0;
+            });
+
+            // Remove extraneous columns (like MissingCol if present)
+            uniqueData = uniqueData.map(row => {
+                if (row.MissingCol !== undefined) delete row.MissingCol;
+                return row;
+            });
+
+            return uniqueData;
+        }
+
+        function processCleanedData(cleanedData, rawData) {
+            // Display raw table (first 10)
+            populateTable(rawData.slice(0,10), 'dataTable');
+
+            // Display cleaned table (first 10)
+            populateTable(cleanedData.slice(0,10), 'cleanedTable');
+
+            // Calculate stats
+            const totalSales = cleanedData.reduce((sum, row) => sum + parseFloat(row.Sales), 0);
+            const avgSalesByRegion = {};
+            cleanedData.forEach(row => {
+                const region = row.Region;
+                if (!avgSalesByRegion[region]) avgSalesByRegion[region] = { total: 0, count: 0 };
+                avgSalesByRegion[region].total += parseFloat(row.Sales);
+                avgSalesByRegion[region].count++;
+            });
+            for (const region in avgSalesByRegion) {
+                avgSalesByRegion[region] = (avgSalesByRegion[region].total / avgSalesByRegion[region].count).toFixed(2);
+            }
+
+            // Compute raw sales (ignoring missing, dups)
+            const rawDateGroups = {};
+            const validRaw = rawData.filter(row => row.Sales && row.Quantity && row.Region && row.OrderDate && row.Sales !== '9999');
+            validRaw.forEach(row => {
+                const date = standardizeDate(row.OrderDate);
+                if (!rawDateGroups[date]) rawDateGroups[date] = 0;
+                rawDateGroups[date] += parseFloat(row.Sales);
+            });
+            const rawDates = Object.keys(rawDateGroups).sort();
+            const rawSales = rawDates.map(d => rawDateGroups[d]);
+
+            // Compute cleaned sales
+            const cleanDateGroups = {};
+            cleanedData.forEach(row => {
+                const date = row.OrderDate;
+                if (!cleanDateGroups[date]) cleanDateGroups[date] = 0;
+                cleanDateGroups[date] += parseFloat(row.Sales);
+            });
+            const cleanDates = Object.keys(cleanDateGroups).sort();
+            const cleanSales = cleanDates.map(d => cleanDateGroups[d]);
+
+            document.getElementById('stats').innerHTML = `
+                <h2>Data Analytics</h2>
+                <p><strong>Cleaning Steps Performed:</strong></p>
+                <ul>
+                    <li>Removed duplicate records</li>
+                    <li>Filled missing Sales with mean value</li>
+                    <li>Filled missing Quantity with median value</li>
+                    <li>Removed invalid/outlier records (e.g., sales of 9999)</li>
+                    <li>Standardized date formats</li>
+                </ul>
+                <p><strong>Processed Data:</strong></p>
+                <ul>
+                    <li><strong>Raw Records:</strong> ${rawData.length} (with duplicates, missing values, invalid rows)</li>
+                    <li><strong>Cleaned Records:</strong> ${cleanedData.length} </li>
+                    <li><strong>Total Valid Sales:</strong> $${cleanSales.reduce((a,b)=>a+b,0).toFixed(2)}</li>
+                    <li><strong>Average Sales by Region:</strong></li>
+                    <ul>${Object.entries(avgSalesByRegion).map(([region, avg]) => `<li>${region}: $${avg}</li>`).join('')}</ul>
+                </ul>
+            `;
+
+            // Render combined comparison chart
+            renderComparisonChart(rawDates, rawSales, cleanDates, cleanSales);
+        }
+
+        function renderComparisonChart(rawLabels, rawData, cleanLabels, cleanData) {
+            const ctx = document.getElementById('comparisonChart');
+            if (chart) chart.destroy();
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: 'Raw Sales (messy data)',
+                            data: rawData,
+                            borderColor: 'red',
+                            backgroundColor: 'rgba(255, 0, 0, 0.1)',
+                            fill: false,
+                            pointStyle: 'circle',
+                            pointRadius: 3
+                        },
+                        {
+                            label: 'Cleaned Sales (processed data)',
+                            data: cleanData,
+                            borderColor: 'green',
+                            backgroundColor: 'rgba(0, 255, 0, 0.1)',
+                            fill: false,
+                            pointStyle: 'rect',
+                            pointRadius: 3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Raw vs Cleaned Sales Data Comparison',
+                            font: { size: 16 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': $' + context.parsed.y.toFixed(2);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'category',
+                            labels: cleanLabels.map((l,i) => rawLabels[i] || l), // Use clean for consistent labels
+                            title: {
+                                display: true,
+                                text: 'Date'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Total Sales ($)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function standardizeDate(dateStr) {
+            if (dateStr.includes('false')) return null;
+            if (dateStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) return dateStr;
+            if (dateStr.match(/^Jan\/\d{2}\/\d{4}$/)) return dateStr.replace('Jan/', '01/');
+            if (dateStr.match(/^Jan-\d{2}-\d{4}$/)) return dateStr.replace('Jan-', '01/').replace('-', '/');
+            return dateStr;
+        }
+
+        function populateTable(data, tableId) {
+            const table = document.getElementById(tableId);
+            if (data.length === 0) return;
+            const headers = Object.keys(data[0]);
+            table.innerHTML = `
+                <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+                <tbody>${data.map(row => `<tr>${headers.map(h => `<td>${row[h] || ''}</td>`).join('')}</tr>`).join('')}</tbody>
+            `;
+        }
+    </script>
+</body>
+</html>
+</content>

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Stock Price Analysis - Real-time stock data tracker with technical indicators">
+    <title>Dakota AI - Stock Analyzer</title>
+    <link rel="stylesheet" href="../css/global.css">
+    <link rel="icon" href="../DA.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="demo-container">
+        <header class="demo-header">
+            <h1><i class="fas fa-chart-line"></i> Stock Price Analyzer</h1>
+            <p>Real-time stock analysis with technical indicators and market insights</p>
+        </header>
+
+        <div class="demo-content">
+            <div class="symbol-input">
+                <input type="text" id="stockSymbol" placeholder="Enter stock symbol (e.g., AAPL)" value="AAPL">
+                <button onclick="loadStock()" class="btn primary">Analyze</button>
+            </div>
+
+            <div id="loading" class="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>Analyzing stock data...</p>
+            </div>
+
+            <div id="results" style="display: none;">
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <h3>Current Price</h3>
+                        <p id="currentPrice">-</p>
+                    </div>
+                    <div class="metric-card">
+                        <h3>Today's Change</h3>
+                        <p id="change">-</p>
+                    </div>
+                    <div class="metric-card">
+                        <h3>Volume</h3>
+                        <p id="volume">-</p>
+                    </div>
+                    <div class="metric-card">
+                        <h3>RSI</h3>
+                        <p id="rsi">-</p>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="stockChart"></canvas>
+                </div>
+            </div>
+
+            <div id="error" class="error-message" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        async function loadStock() {
+            const symbol = document.getElementById('stockSymbol').value.toUpperCase();
+            if (!symbol) return;
+
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+
+            try {
+                // Simulate API call with demo data
+                setTimeout(() => {
+                    displayStockData(symbol);
+                }, 2000);
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        function displayStockData(symbol) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('results').style.display = 'block';
+
+            // Demo data
+            document.getElementById('currentPrice').textContent = '$150.25';
+            document.getElementById('change').textContent = '+2.45 (+1.66%)';
+            document.getElementById('change').style.color = 'green';
+            document.getElementById('volume').textContent = '45.2M';
+            document.getElementById('rsi').textContent = '68.5';
+
+            // Create chart
+            createChart();
+        }
+
+        function createChart() {
+            const ctx = document.getElementById('stockChart').getContext('2d');
+
+            const data = {
+                labels: Array.from({length: 30}, (_, i) => `Day ${i + 1}`),
+                datasets: [{
+                    label: 'Stock Price',
+                    data: Array.from({length: 30}, () => Math.random() * 50 + 140),
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    tension: 0.1
+                }]
+            };
+
+            new Chart(ctx, {
+                type: 'line',
+                data: data,
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Stock Price Trend'
+                        }
+                    }
+                }
+            });
+        }
+
+        function showError(message) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('error').textContent = message;
+            document.getElementById('error').style.display = 'block';
+        }
+    </script>
+</body>
+</html>

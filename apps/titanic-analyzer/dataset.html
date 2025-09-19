@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dakota AI Demos - Public Dataset Explorer</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/papaparse/papaparse.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1 { color: #333; text-align: center; }
+        #dataTable { border-collapse: collapse; width: 100%; margin: 20px 0; }
+        #dataTable th, #dataTable td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        #dataTable th { background-color: #f2f2f2; }
+        #stats { margin: 20px 0; }
+        .chart-container { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
+        canvas { width: 80vw; height: 50vh; max-width: 400px; max-height: 300px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Dakota AI Demo: Titanic Dataset Explorer</h1>
+        <p>This demo loads the public Titanic dataset from Kaggle, processes the data, performs analytics, and visualizes insights including survival rates, distributions, and correlations. Data: 50 rows from Titanic passenger data.</p>
+        <button onclick="loadDataset()">Load Dataset</button>
+        <div id="stats"></div>
+        <div class="chart-container">
+            <canvas id="survivalChart"></canvas>
+            <canvas id="ageChart"></canvas>
+            <canvas id="genderChart"></canvas>
+            <canvas id="classChart"></canvas>
+        </div>
+        <table id="dataTable"></table>
+        <div id="prediction"></div>
+    </div>
+
+    <script>
+        let chart;
+
+        let charts = {};
+
+        function loadDataset() {
+            fetch('titanic.csv')
+                .then(response => response.text())
+                .then(csvText => {
+                    Papa.parse(csvText, {
+                        header: true,
+                        complete: function(results) {
+                            processData(results.data);
+                        }
+                    });
+                });
+        }
+
+        function processData(data) {
+            // Filter out rows without survived
+            const validData = data.filter(row => row.survived !== '');
+
+            // Calculate survival rate
+            const survivedCount = validData.filter(row => row.survived === '1').length;
+            const survivalRate = (survivedCount / validData.length) * 100;
+
+            // Avg age
+            const ages = validData.map(row => parseFloat(row.age)).filter(age => !isNaN(age));
+            const avgAge = ages.reduce((a,b)=>a+b,0)/ages.length;
+
+            // Survival by class
+            const classSurvival = {};
+            validData.forEach(row => {
+                const pclass = row.pclass;
+                if (!classSurvival[pclass]) classSurvival[pclass] = { total: 0, survived: 0 };
+                classSurvival[pclass].total++;
+                if (row.survived === '1') classSurvival[pclass].survived++;
+            });
+
+            // Survival by gender
+            const genderSurvival = { male: { total: 0, survived: 0 }, female: { total: 0, survived: 0 } };
+            validData.forEach(row => {
+                genderSurvival[row.sex].total++;
+                if (row.survived === '1') genderSurvival[row.sex].survived++;
+            });
+            const survivalRateMale = (genderSurvival.male.survived / genderSurvival.male.total * 100).toFixed(1);
+            const survivalRateFemale = (genderSurvival.female.survived / genderSurvival.female.total * 100).toFixed(1);
+
+            document.getElementById('stats').innerHTML = `
+                <h2>Data Analytics</h2>
+                <p><strong>Total Passengers:</strong> ${validData.length}</p>
+                <p><strong>Survival Rate:</strong> ${survivalRate.toFixed(1)}%</p>
+                <p><strong>Average Age:</strong> ${avgAge.toFixed(1)} years</p>
+                <p><strong>Survival Probability by Gender:</strong> Females: ${survivalRateFemale}% (${genderSurvival.female.survived}/${genderSurvival.female.total}), Males: ${survivalRateMale}% (${genderSurvival.male.survived}/${genderSurvival.male.total})</p>
+                <p><strong>Survival by Class:</strong></p>
+                <ul>${Object.entries(classSurvival).map(([cls, {total, survived}]) => `<li>Class ${cls}: ${survived}/${total} survived (${((survived/total)*100).toFixed(1)}%)</li>`).join('')}</ul>
+                <p><strong>Insight:</strong> Women had a much higher chance of survival (74.2% vs 18.9%), following the "women and children first" rule.</p>
+            `;
+
+            // Table
+            populateTable(validData.slice(0,10));
+
+            // Charts
+            renderSurvivalChart(classSurvival);
+            renderAgeChart(ages);
+            renderGenderChart(validData);
+            renderClassChart(validData);
+
+            // AI: Linear regression on age vs survival
+            const survivalValues = validData.map(row => parseInt(row.survived));
+            const regression = linearRegression(ages, survivalValues);
+            document.getElementById('prediction').innerHTML = `
+                <h2>AI Prediction (Linear Regression)</h2>
+                <p>Correlation between Age and Survival Probability.</p>
+                <p>Equation: Survival Probability = ${regression.slope.toFixed(4)} * Age + ${regression.intercept.toFixed(4)}</p>
+            `;
+        }
+
+        function populateTable(rows) {
+            const table = document.getElementById('dataTable');
+            table.innerHTML = '<thead><tr><th>Name</th><th>Sex</th><th>Age</th><th>Class</th><th>Survived</th></tr></thead><tbody></tbody>';
+            const tbody = table.querySelector('tbody');
+            rows.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${row.name || ''}</td><td>${row.sex}</td><td>${row.age || 'N/A'}</td><td>${row.pclass}</td><td>${row.survived === '1' ? 'Yes' : 'No'}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderSurvivalChart(classData) {
+            const ctx = document.getElementById('survivalChart').getContext('2d');
+            if (charts.survival) charts.survival.destroy();
+            charts.survival = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(classData),
+                    datasets: [{
+                        label: 'Survival Rate (%)',
+                        data: Object.values(classData).map(d => (d.survived / d.total) * 100),
+                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, max: 100 } },
+                    plugins: { title: { display: true, text: 'Survival Rate by Class' } }
+                }
+            });
+        }
+
+        function renderAgeChart(ages) {
+            const ctx = document.getElementById('ageChart').getContext('2d');
+            if (charts.age) charts.age.destroy();
+            const bins = [0,10,20,30,40,50,60,70,80];
+            const distribution = bins.slice(0,-1).map((bin, i) => ages.filter(age => age >= bin && age < bins[i+1]).length);
+            charts.age = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: bins.slice(0,-1).map((b,i) => `${b}-${bins[i+1]-1}`),
+                    datasets: [{
+                        label: 'Count',
+                        data: distribution,
+                        backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { title: { display: true, text: 'Age Distribution' } }
+                }
+            });
+        }
+
+        function renderGenderChart(data) {
+            const ctx = document.getElementById('genderChart').getContext('2d');
+            if (charts.gender) charts.gender.destroy();
+            const genderCounts = { male: { total: 0, survived: 0 }, female: { total: 0, survived: 0 } };
+            data.forEach(row => {
+                genderCounts[row.sex].total++;
+                if (row.survived === '1') genderCounts[row.sex].survived++;
+            });
+            charts.gender = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Survived Males', 'Did not Survive Males', 'Survived Females', 'Did not Survive Females'],
+                    datasets: [{
+                        data: [genderCounts.male.survived, genderCounts.male.total - genderCounts.male.survived, genderCounts.female.survived, genderCounts.female.total - genderCounts.female.survived],
+                        backgroundColor: ['blue', 'lightblue', 'pink', 'lightcoral']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { title: { display: true, text: 'Survival by Gender' } }
+                }
+            });
+        }
+
+        function renderClassChart(data) {
+            const ctx = document.getElementById('classChart').getContext('2d');
+            if (charts.class) charts.class.destroy();
+            const classCounts = { '1': 0, '2': 0, '3': 0 };
+            data.forEach(row => classCounts[row.pclass]++);
+            charts.class = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Class 1', 'Class 2', 'Class 3'],
+                    datasets: [{
+                        data: Object.values(classCounts),
+                        backgroundColor: ['gold', 'silver', 'brown']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { title: { display: true, text: 'Passenger Class Distribution' } }
+                }
+            });
+        }
+
+        function linearRegression(xValues, yValues) {
+            const n = xValues.length;
+            const sumX = xValues.reduce((a,b)=>a+b,0);
+            const sumY = yValues.reduce((a,b)=>a+b,0);
+            const sumXY = xValues.reduce((sum, x, i) => sum + x * yValues[i], 0);
+            const sumXX = xValues.reduce((sum, x) => sum + x * x, 0);
+
+            const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+            const intercept = (sumY - slope * sumX) / n;
+
+            return { slope, intercept };
+        }
+    </script>
+</body>
+</html>
+</content>

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dakota AI Demos - Crypto Market Sentiment Analyzer</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1 { color: #333; text-align: center; }
+        #cryptoInput { display: block; margin: 20px auto; padding: 10px; width: 200px; }
+        #cryptoData { margin-top: 20px; }
+        #toggles { text-align: center; margin: 10px 0; }
+        canvas { display: block; margin: 20px auto; width: 80vw; height: 50vh; max-width: 800px; max-height: 400px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Dakota AI Demo: Crypto Momentum Analyzer</h1>
+        <p>This demo analyzes cryptocurrency trends, volatility, and momentum indicators for short-term bullish/bearish/neutral analysis. Enter a crypto symbol (e.g., bitcoin) to process data and visualize insights.</p>
+        <input type="text" id="cryptoInput" placeholder="Enter Crypto Symbol" value="bitcoin">
+        <button onclick="fetchCryptoData()">Analyze</button>
+        <div id="toggles">
+            <label><input type="checkbox" id="volatilityToggle" checked> Show Volatility</label>
+            <label><input type="checkbox" id="momentumToggle" checked> Show Momentum</label>
+        </div>
+        <div id="cryptoData"></div>
+        <canvas id="cryptoChart"></canvas>
+    </div>
+
+    <script>
+        let chart;
+        const sentiment = new Sentiment();
+
+        const sampleNews = {
+            bitcoin: [
+                "Bitcoin rises to new all-time high amid institutional adoption.",
+                "Market experts warn of Bitcoin volatility in ongoing bearish trends.",
+                "Positive regulatory news boosts Bitcoin sentiment globally.",
+                "Bitcoin faces downward pressure due to macroeconomic concerns."
+            ],
+            ethereum: [
+                "Ethereum upgrades drive bullish market mood.",
+                "Ether plunges following whale selling activity.",
+                "Ethereum developer conference sparks optimism.",
+                "Concerns over Ethereum gas fees persist in crypto community."
+            ],
+            solana: [
+                "Solana recovers from network outages, sentiment improves.",
+                "Solana hits peak daily transactions, market cheers.",
+                "Technical exploits shake Solana investor confidence.",
+                "Gov. proposes blockchain initiative to boost Solana adoption."
+            ]
+            // Add more as needed
+        };
+
+        function calculateVolatility(prices) {
+            const returns = [];
+            for (let i = 1; i < prices.length; i++) {
+                returns.push((prices[i] - prices[i-1]) / prices[i-1]);
+            }
+            const mean = returns.reduce((a, b) => a + b, 0) / returns.length;
+            const variance = returns.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / returns.length;
+            return Math.sqrt(variance) * 100; // As percentage
+        }
+
+        function calculateADX(prices, period = 14) {
+            if (prices.length < period * 2) return { adx: 0, plusDI: 0, minusDI: 0 };
+            const highs = prices; // Assume highs ~ prices
+            const lows = prices;  // Assume lows ~ prices
+            const closes = prices;
+            const dmPlus = highs.map((h, i) => i > 0 ? Math.max(0, h - highs[i-1]) : 0);
+            const dmMinus = lows.map((l, i) => i > 0 ? Math.max(0, lows[i-1] - l) : 0);
+            const tr = closes.map((c, i) => i > 0 ? Math.max(c - lows[i-1], highs[i-1] - c, highs[i-1] - lows[i-1]) : 0);
+            const atr = [];
+            let atrSum = tr.slice(0, period).reduce((a, b) => a + b, 0);
+            atr.push(atrSum / period);
+            for (let i = period; i < tr.length; i++) {
+                atrSum = atrSum - (atrSum / period) + tr[i];
+                atr.push(atrSum / period);
+            }
+            const diPlus = [];
+            const diMinus = [];
+            for (let i = period; i < dmPlus.length; i++) {
+                diPlus.push((dmPlus.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0) / atr[i - period]) * 100);
+                diMinus.push((dmMinus.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0) / atr[i - period]) * 100);
+            }
+            const dx = diPlus.map((d, i) => Math.abs(d - diMinus[i]) / (d + diMinus[i]) * 100);
+            const adx = dx.slice(0, period).reduce((a, b) => a + b, 0) / period;
+            const plusDI = diPlus[diPlus.length - 1];
+            const minusDI = diMinus[diMinus.length - 1];
+            return { adx, plusDI, minusDI };
+        }
+
+        function getMomentumAnalysis(adxVal, plusDI, minusDI) {
+            let strength = 'Weak Trend (ADX < 20)';
+            if (adxVal >= 25) strength = 'Strong Trend (ADX >= 25)';
+            else if (adxVal >= 20) strength = 'Moderate Trend (20 <= ADX < 25)';
+            let direction = 'Neutral';
+            if (plusDI > minusDI) direction = 'Bullish (+DI > -DI)';
+            else if (minusDI > plusDI) direction = 'Bearish (-DI > +DI)';
+            return { strength, direction };
+        }
+
+        function generateMockPrices(startPrice, hours = 24) {
+            let price = startPrice;
+            const prices = [price];
+            for (let i = 1; i < hours; i++) {
+                const change = (Math.random() - 0.5) * 0.1; // ±5% max per hour
+                price = price * (1 + change);
+                prices.push(price);
+            }
+            return prices;
+        }
+
+        async function fetchCryptoData() {
+            const symbol = document.getElementById('cryptoInput').value.toLowerCase();
+            const apiKey = 'CG-htAfQpJ25kHiw7SxRNTjYNXA'; // Note: This should be kept secret; move to server-side for production
+            const apiUrl = `https://api.coingecko.com/api/v3/coins/${symbol}/market_chart?vs_currency=usd&days=30&interval=daily`;
+
+            try {
+                document.getElementById('cryptoData').innerHTML = 'Fetching real data...';
+                const response = await axios.get(apiUrl, {
+                    headers: {
+                        'x-cg-demo-api-key': apiKey
+                    }
+                });
+                const prices = response.data.prices.map(p => p[1]);
+                const times = response.data.prices.map(p => new Date(p[0]).toLocaleDateString());
+
+                const volatility = calculateVolatility(prices);
+                const { adx, plusDI, minusDI } = calculateADX(prices);
+                const { strength, direction } = getMomentumAnalysis(adx, plusDI, minusDI);
+
+                const latestPrice = prices[prices.length - 1];
+                document.getElementById('cryptoData').innerHTML = `
+                    <h2>${symbol.toUpperCase()} - Market Analysis</h2>
+                    <p><strong>Latest Price:</strong> $${latestPrice.toFixed(2)}</p>
+                    <p><strong>Volatility (1-day):</strong> ${volatility.toFixed(2)}%</p>
+                    <p><strong>ADX:</strong> ${adx.toFixed(2)}</p>
+                    <p><strong>Trend Strength:</strong> ${strength}</p>
+                    <p><strong>Momentum Direction:</strong> ${direction}</p>
+                    <p><strong>+DI:</strong> ${plusDI.toFixed(2)} | <strong>-DI:</strong> ${minusDI.toFixed(2)}</p>
+                `;
+
+                renderChart(times, prices, volatility, adx);
+            } catch (error) {
+                document.getElementById('cryptoData').innerHTML = 'Error fetching data. Using mock data instead...';
+                console.error(error);
+                // Fallback to mock data
+                fetchMockData(symbol);
+            }
+        }
+
+        function fetchMockData(symbol) {
+            const startPrices = { bitcoin: 92000, ethereum: 2400, solana: 180, default: 5000 };
+            const prices = generateMockPrices(startPrices[symbol] || startPrices.default);
+            const times = Array.from({ length: 24 }, (_, i) => {
+                const d = new Date();
+                d.setHours(d.getHours() - (23 - i));
+                return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            });
+
+            const volatility = calculateVolatility(prices);
+            const { adx, plusDI, minusDI } = calculateADX(prices);
+            const { strength, direction } = getMomentumAnalysis(adx, plusDI, minusDI);
+
+            const latestPrice = prices[prices.length - 1];
+            document.getElementById('cryptoData').innerHTML = `
+                <h2>${symbol.toUpperCase()} - Market Analysis (Mock)</h2>
+                <p><strong>Latest Price:</strong> $${latestPrice.toFixed(2)}</p>
+                <p><strong>Volatility (1-day):</strong> ${volatility.toFixed(2)}%</p>
+                <p><strong>ADX:</strong> ${adx.toFixed(2)}</p>
+                <p><strong>Trend Strength:</strong> ${strength}</p>
+                <p><strong>Momentum Direction:</strong> ${direction}</p>
+                <p><strong>+DI:</strong> ${plusDI.toFixed(2)} | <strong>-DI:</strong> ${minusDI.toFixed(2)}</p>
+            `;
+
+            renderChart(times, prices, volatility, adx);
+        }
+
+        function renderChart(times, prices, volatility, adxVal) {
+            const ctx = document.getElementById('cryptoChart');
+            const datasets = [{ label: 'Price', data: prices, borderColor: 'blue', fill: false }];
+            if (document.getElementById('volatilityToggle').checked) {
+                // Plot volatility as a line (simplified, show horizontal)
+                datasets.push({ label: 'Volatility Threshold', data: new Array(prices.length).fill(volatility / 10), borderColor: 'red', fill: false, pointRadius: 0 });
+            }
+            // Can add ADX line or additional indicators if needed
+
+            if (chart) chart.destroy();
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: { labels: times, datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: false } },
+                    plugins: {
+                        title: { display: true, text: `Volatility: ${volatility.toFixed(2)}% | ADX: ${adxVal.toFixed(2)}` }
+                    }
+                }
+            });
+        }
+
+        // Event listeners
+        document.getElementById('volatilityToggle').addEventListener('change', () => fetchCryptoData());
+        document.getElementById('momentumToggle').addEventListener('change', () => fetchCryptoData());
+    </script>
+</body>
+</html>
