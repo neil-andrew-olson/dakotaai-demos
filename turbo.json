@@ -1,1 +1,9 @@
-{}
+{
+  "pipeline": {
+    "build": {
+      "outputs": [".next/**", "!.next/cache/**"]
+    },
+    "dev": {},
+    "start": {}
+  }
+}
