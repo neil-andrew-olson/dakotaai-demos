@@ -1,9 +1,11 @@
 {
   "pipeline": {
     "build": {
+      "dependsOn": ["^build"],
       "outputs": [".next/**", "!.next/cache/**"]
     },
     "dev": {},
-    "start": {}
+    "start": {},
+    "deploy": {}
   }
 }
