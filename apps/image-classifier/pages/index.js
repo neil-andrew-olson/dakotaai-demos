@@ -155,6 +155,10 @@ export default function Home() {
     setPredictions(mockPredictions);
   }
 
+  const navigateToDemo = (demo) => {
+    window.location.href = demo;
+  };
+
   return (
     <div className={styles.container}>
       <Head>
@@ -164,6 +168,72 @@ export default function Home() {
       </Head>
 
       <main className={styles.main}>
+        {/* Navigation Bar */}
+        <nav style={{
+          textAlign: 'center',
+          marginBottom: 30,
+          padding: '20px 0',
+          borderBottom: '2px solid #eee',
+          backgroundColor: '#f8f9fa',
+          borderRadius: '8px 8px 0 0'
+        }}>
+          <h2 style={{ marginBottom: 15, color: '#333' }}>🚀 Dakota AI Demo Suite</h2>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '15px',
+            flexWrap: 'wrap',
+            maxWidth: '800px',
+            margin: '0 auto'
+          }}>
+            <button
+              onClick={() => navigateToDemo('/')}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#007bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 'bold'
+              }}
+            >
+              🪙 Crypto Analyzer
+            </button>
+            <button
+              onClick={() => navigateToDemo('/apps/image-classifier')}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#28a745',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 'bold'
+              }}
+            >
+              🧠 Image Classifier
+            </button>
+            <button
+              onClick={() => navigateToDemo('/apps/titanic-analyzer')}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#dc3545',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 'bold'
+              }}
+            >
+              🚢 Titanic ML Analyzer
+            </button>
+          </div>
+        </nav>
+
         <h1 className={styles.title}>
           <span className={styles.icon}>🧠</span>
           AI Image Classifier
@@ -213,21 +283,21 @@ export default function Home() {
           <div className={styles.resultsSection}>
             <h3>Classification Results</h3>
             <div className={styles.resultsContainer}>
-              {predictions.length > 0 ? (
-                <>
-                  <div className={styles.resultCard}>
-                    <h4>Predicted: <span className={styles.predictionClass}>{classes[predictions[0].classIndex]}</span></h4>
-                    <h5>Confidence: <span className={styles.confidenceLevel}>{Math.round(predictions[0].confidence * 100)}%</span></h5>
-                    <div className={styles.predictionBar}>
-                      <div
-                        className={styles.predictionFill}
-                        style={{ width: `${Math.round(predictions[0].confidence * 100)}%` }}
-                      ></div>
-                    </div>
-                    <p className={styles.predictionDescription}>
-                      Smart Analysis Result: Our analyzer detected {predictions[0].reasoning}, suggesting this is a {classes[predictions[0].classIndex].toLowerCase()} with {Math.round(predictions[0].confidence * 100)}% confidence.
-                    </p>
-                  </div>
+                  {predictions.length > 0 ? (
+                    <>
+                      <div className={styles.resultCard}>
+                        <h4>Predicted: <span className={styles.predictionClass}>{classes[predictions[0].classIndex]}</span></h4>
+                        <h5>Confidence: <span className={styles.confidenceLevel}>{Math.round(predictions[0].confidence * 100)}%</span></h5>
+                        <div className={styles.predictionBar}>
+                          <div
+                            className={styles.predictionFill}
+                            style={{ width: `${Math.round(predictions[0].confidence * 100)}%` }}
+                          ></div>
+                        </div>
+                        <p className={styles.predictionDescription}>
+                          AI Analysis Result: Our trained model detected {predictions[0].reasoning}, classifying this as a {classes[predictions[0].classIndex].toLowerCase()} with {Math.round(predictions[0].confidence * 100)}% confidence from CIFAR-10 trained parameters.
+                        </p>
+                      </div>
 
                   <div className={styles.resultCard}>
                     <h4>Top 3 Predictions</h4>

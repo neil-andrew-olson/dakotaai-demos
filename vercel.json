@@ -1,5 +1,10 @@
 {
   "version": 2,
+  "functions": {
+    "apps/*/pages/api/**/*.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
   "builds": [
     {
       "src": "apps/*/package.json",
@@ -7,6 +12,18 @@
     }
   ],
   "routes": [
+    {
+      "src": "/api/crypto/(.*)",
+      "dest": "/apps/crypto-analyzer/api/crypto/$1"
+    },
+    {
+      "src": "/api/titanic/(.*)",
+      "dest": "/apps/titanic-analyzer/api/titanic/$1"
+    },
+    {
+      "src": "/api/classify",
+      "dest": "/apps/image-classifier/api/classify"
+    },
     {
       "src": "/apps/crypto-analyzer/(.*)",
       "dest": "/apps/crypto-analyzer/$1"

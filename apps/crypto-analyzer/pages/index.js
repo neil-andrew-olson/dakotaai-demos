@@ -33,9 +33,66 @@ export default function CryptoAnalyzer() {
     fetchCryptoData();
   }, []);
 
+  const navigateToDemo = (demo) => {
+    window.location.href = demo;
+  };
+
   return (
     <div style={{ fontFamily: 'Arial, sans-serif', margin: 0, padding: 20, backgroundColor: '#f5f5f5' }}>
       <div style={{ maxWidth: 1200, margin: '0 auto', background: 'white', padding: 20, borderRadius: 8, boxShadow: '0 0 10px rgba(0,0,0,0.1)' }}>
+
+        {/* Navigation Bar */}
+        <nav style={{ textAlign: 'center', marginBottom: 30, padding: '20px 0', borderBottom: '2px solid #eee' }}>
+          <h2 style={{ marginBottom: 15, color: '#333' }}>🚀 Dakota AI Demo Suite</h2>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => navigateToDemo('/')}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#007bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 'bold'
+              }}
+            >
+              🪙 Crypto Analyzer
+            </button>
+            <button
+              onClick={() => navigateToDemo('/apps/image-classifier')}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#28a745',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 'bold'
+              }}
+            >
+              🧠 Image Classifier
+            </button>
+            <button
+              onClick={() => navigateToDemo('/apps/titanic-analyzer')}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#dc3545',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 'bold'
+              }}
+            >
+              🚢 Titanic ML Analyzer
+            </button>
+          </div>
+        </nav>
+
         <h1 style={{ color: '#333', textAlign: 'center' }}>Dakota AI Demo: Crypto Momentum Analyzer</h1>
         <p>This demo analyzes cryptocurrency trends, volatility, and momentum indicators for short-term bullish/bearish/neutral analysis. Enter a crypto symbol (e.g., bitcoin) to process data and visualize insights.</p>
         <input
