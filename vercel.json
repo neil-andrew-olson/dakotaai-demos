@@ -5,5 +5,11 @@
       "src": "apps/image-classifier/package.json",
       "use": "@vercel/next"
     }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/apps/image-classifier/$1"
+    }
   ]
 }
