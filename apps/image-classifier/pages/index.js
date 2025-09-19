@@ -26,18 +26,41 @@ export default function Home() {
       await tf.setBackend('webgl');
       await tf.ready();
 
-      // Try to load model (fallback to demo mode if fails)
+      // Try to load model (fallback to creating a demo model if fails)
       try {
         console.log('Loading model...');
-        // This will be your converted model path
-        // const loadedModel = await tf.loadLayersModel('/models/model.json');
-        // setModel(loadedModel);
-        console.log('Demo mode: AI model simulation active');
+        const loadedModel = await tf.loadGraphModel('/tfjs_model/model.json');
+        setModel(loadedModel);
+        console.log('Real AI model loaded successfully!');
       } catch (error) {
-        console.warn('Model loading failed, using demo mode:', error);
+        console.warn('Model loading failed, creating demo model:', error);
+        console.log('Creating demo CNN model...');
+
+        // Create a simple working CNN model for demo
+        const demoModel = tf.sequential();
+        demoModel.add(tf.layers.conv2d({
+          inputShape: [224, 224, 3],
+          filters: 8,
+          kernelSize: 3,
+          activation: 'relu'
+        }));
+        demoModel.add(tf.layers.maxPooling2d({poolSize: [2, 2]}));
+        demoModel.add(tf.layers.flatten());
+        demoModel.add(tf.layers.dense({units: 10, activation: 'softmax'}));
+
+        // Initialize with random weights (demo only)
+        await demoModel.compile({
+          optimizer: 'adam',
+          loss: 'categoricalCrossentropy',
+          metrics: ['accuracy']
+        });
+
+        setModel(demoModel);
+        console.log('Demo CNN model created and ready!');
       }
     } catch (error) {
       console.error('TensorFlow.js initialization failed:', error);
+      console.log('Running in fallback demo mode');
     }
   }
 
