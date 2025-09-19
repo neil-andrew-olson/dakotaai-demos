@@ -1,0 +1,19 @@
+{
+  "name": "dakotaai-demos",
+  "version": "1.0.0",
+  "description": "Dakota AI interactive demo portfolio",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "deploy": "turbo deploy"
+  },
+  "devDependencies": {
+    "turbo": "^1.10.0"
+  },
+  "packageManager": "npm@9.0.0"
+}
