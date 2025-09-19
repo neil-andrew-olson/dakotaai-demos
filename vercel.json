@@ -5,5 +5,23 @@
       "src": "apps/*/package.json",
       "use": "@vercel/next"
     }
+  ],
+  "routes": [
+    {
+      "src": "/apps/crypto-analyzer/(.*)",
+      "dest": "/apps/crypto-analyzer/$1"
+    },
+    {
+      "src": "/apps/image-classifier/(.*)",
+      "dest": "/apps/image-classifier/$1"
+    },
+    {
+      "src": "/apps/titanic-analyzer/(.*)",
+      "dest": "/apps/titanic-analyzer/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/apps/crypto-analyzer/$1"
+    }
   ]
 }
