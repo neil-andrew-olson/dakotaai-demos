@@ -20,19 +20,31 @@ export default function Home() {
 
   async function initTF() {
     try {
-      console.log('Loading TensorFlow.js and MobileNet model...');
+      console.log('Loading TensorFlow.js for CIFAR-10 classification...');
       const tf = await import('@tensorflow/tfjs');
 
       await tf.setBackend('webgl');
       await tf.ready();
 
-      // Load real MobileNet model for image classification
-      console.log('Loading MobileNet v2 model...');
+      // Try different approaches to load CIFAR-10 model
+
+      // Approach 1: Try user's converted model first
+      try {
+        console.log('Loading your trained CIFAR-10 model...');
+        const userModel = await tf.loadGraphModel('/tfjs_model/model.json');
+        setModel(userModel);
+        console.log('✅ Your trained CIFAR-10 model loaded successfully!');
+        return;
+      } catch (userModelError) {
+        console.log('User model not available, trying alternative approach...');
+      }
+
+      // Approach 2: Fallback to MobileNet with better mapping
+      console.log('Loading MobileNet v2 for image classification...');
       const mobilenet = await import('@tensorflow-models/mobilenet');
       const loadedModel = await mobilenet.load();
       setModel(loadedModel);
-
-      console.log('✅ Real AI model loaded successfully - MobileNet v2 trained on ImageNet!');
+      console.log('✅ MobileNet loaded - will optimize CIFAR-10 mapping');
 
     } catch (error) {
       console.error('TensorFlow.js model loading failed:', error);
