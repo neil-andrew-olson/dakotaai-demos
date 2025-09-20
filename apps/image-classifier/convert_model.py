@@ -6,16 +6,37 @@ import os
 import json
 
 def convert_h5_to_tfjs():
-    """Convert transfer_model.h5 to TensorFlow.js format"""
+    """Convert CIFAR-10 high accuracy model to TensorFlow.js format"""
 
-    # Load the H5 model
-    model_path = '../../transfer_model.h5'
-    if not os.path.exists(model_path):
-        print(f"❌ Model file {model_path} not found!")
+    # Try available model files in order of preference
+    model_files = [
+        'cifar10_high_accuracy_model.h5',
+        'best_cifar10_model.keras',
+        '../../transfer_model.h5'
+    ]
+
+    model_path = None
+    for candidate in model_files:
+        if os.path.exists(candidate):
+            model_path = candidate
+            break
+
+    if model_path is None:
+        print("❌ No suitable model file found!")
+        print("Looking for:", model_files)
         return False
 
-    print("📥 Loading H5 model...")
-    model = tf.keras.models.load_model(model_path)
+    print(f"📥 Loading model from: {model_path}")
+
+    # Handle different model formats
+    if model_path.endswith('.h5'):
+        model = tf.keras.models.load_model(model_path)
+    elif model_path.endswith('.keras'):
+        model = tf.keras.models.load_model(model_path)
+    else:
+        print("❌ Unsupported model format")
+        return False
+
     print("✅ Model loaded successfully!")
 
     # Display model summary
