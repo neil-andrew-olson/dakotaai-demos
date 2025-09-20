@@ -26,22 +26,25 @@ export default function Home() {
       await tf.setBackend('webgl');
       await tf.ready();
 
-      // Load pre-trained MobileNet v2 for CIFAR-10 classification
-      console.log('Loading MobileNet v2 for image classification...');
+      // Load locally hosted MobileNet v2 to avoid CORS issues
+      console.log('Loading locally hosted MobileNet v2 for image classification...');
       try {
-        const mobilenetModel = await tf.loadGraphModel('https://tfhub.dev/google/tfjs-model/imagenet/mobilenet_v2_100_224/classification/3/default/1/model.json');
+        const mobilenetModel = await tf.loadGraphModel('/mobilenet/model.json');
         setModel({ type: 'mobilenet', model: mobilenetModel });
-        console.log('✅ MobileNet v2 loaded successfully!');
+        console.log('✅ Local MobileNet v2 loaded successfully!');
+        console.log('🚀 No CORS issues - model served from same domain');
       } catch (error) {
-        console.error('Failed to load MobileNet:', error);
+        console.error('Failed to load local MobileNet:', error);
+        // Fallback to original model (keeping for compatibility)
+        console.log('🔄 Trying fallback model...');
         try {
-          // Fallback: try local model if available
           const localModel = await tf.loadLayersModel('/tfjs_model/model.json');
           setModel({ type: 'local', model: localModel });
-          console.log('✅ Local backup model loaded!');
+          console.log('✅ Fallback model loaded successfully!');
         } catch (fallbackError) {
           console.error('All model loading failed:', fallbackError);
-          alert('Unable to load any AI model. Please refresh the page and try again later.');
+          console.log('💡 Suggestion: Run the model architecture fix scripts to create compatible models');
+          alert('AI model loading failed. Please check the console for detailed error information.');
         }
       }
 
@@ -201,7 +204,7 @@ export default function Home() {
   return (
     <div className={styles.container}>
       <Head>
-        <title>AI Image Classifier - Dakota AI Demo</title>
+        <title>AI Image Classifier - Dakota AI</title>
         <meta name="description" content="Experience transfer learning in action with our AI image classifier" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
@@ -221,7 +224,7 @@ export default function Home() {
             marginBottom: '15px',
             textShadow: '2px 2px 4px rgba(0,0,0,0.3)'
           }}>
-            🏢 Dakota AI Solutions
+            🏢 Dakota AI
           </div>
           <h1 style={{
             fontSize: '2.2rem',
@@ -276,7 +279,7 @@ export default function Home() {
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <div>
-              <strong>Service Provider:</strong> Dakota AI Solutions
+              <strong>Service Provider:</strong> Dakota AI
             </div>
             <div>
               <strong>Response Time:</strong> Sub-second Analysis
@@ -677,7 +680,7 @@ export default function Home() {
                         lineHeight: '1.6',
                         fontSize: '1rem'
                       }}>
-                        Dakota AI Solutions delivers enterprise-level image classification capabilities with sub-second response times and industry-leading accuracy. Our AI models are trained on extensive datasets and continuously optimized for performance and reliability.
+                        Dakota AI delivers enterprise-level image classification capabilities with sub-second response times and industry-leading accuracy. Our AI models are trained on extensive datasets and continuously optimized for performance and reliability.
                       </p>
                       <div style={{
                         display: 'flex',
