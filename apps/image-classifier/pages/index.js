@@ -26,29 +26,30 @@ export default function Home() {
       await tf.setBackend('webgl');
       await tf.ready();
 
-      // Try different approaches to load CIFAR-10 model
-
-      // Approach 1: Try user's converted model first
+      // Load the converted CIFAR-10 model
       try {
-        console.log('Loading your trained CIFAR-10 model...');
-        const userModel = await tf.loadGraphModel('/tfjs_model/model.json');
-        setModel(userModel);
-        console.log('✅ Your trained CIFAR-10 model loaded successfully!');
-        return;
-      } catch (userModelError) {
-        console.log('User model not available, trying alternative approach...');
+        console.log('Loading trained CIFAR-10 model...');
+        const cifarModel = await tf.loadLayersModel('/tfjs_model/model.json');
+        setModel(cifarModel);
+        console.log('✅ CIFAR-10 model loaded successfully!');
+      } catch (modelError) {
+        console.error('Failed to load CIFAR-10 model:', modelError);
+        console.log('❌ Could not load CIFAR-10 model - classification unavailable');
+        // Try MobileNet fallback
+        try {
+          console.log('Loading MobileNet as fallback...');
+          const mobilenet = await import('@tensorflow-models/mobilenet');
+          const fallbackModel = await mobilenet.load();
+          setModel(fallbackModel);
+          console.log('✅ MobileNet loaded as fallback');
+        } catch (fallbackError) {
+          console.error('All model loading failed:', fallbackError);
+        }
       }
 
-      // Approach 2: Fallback to MobileNet with better mapping
-      console.log('Loading MobileNet v2 for image classification...');
-      const mobilenet = await import('@tensorflow-models/mobilenet');
-      const loadedModel = await mobilenet.load();
-      setModel(loadedModel);
-      console.log('✅ MobileNet loaded - will optimize CIFAR-10 mapping');
-
     } catch (error) {
-      console.error('TensorFlow.js model loading failed:', error);
-      console.log('❌ Could not load AI model - classification unavailable');
+      console.error('TensorFlow.js initialization failed:', error);
+      console.log('❌ Could not initialize TensorFlow.js');
     }
   }
 
@@ -91,9 +92,10 @@ export default function Home() {
     setLoading(true);
 
     try {
-      console.log('🏃‍♂️ Running real AI inference with MobileNet...');
+      console.log('🏃‍♂️ Running CIFAR-10 classification...');
+      const tf = await import('@tensorflow/tfjs');
 
-      // Create image element for MobileNet
+      // Create image element
       const img = new Image();
       img.src = URL.createObjectURL(file);
 
@@ -102,51 +104,38 @@ export default function Home() {
         img.onerror = reject;
       });
 
-      // Run MobileNet inference
-      const mobilenetResults = await model.classify(img, 5); // Top 5 predictions
+      // Preprocess image for CIFAR-10 model (224x224 input expected)
+      let tensor = tf.browser.fromPixels(img);
+      tensor = tf.image.resizeBilinear(tensor, [224, 224]);
+      tensor = tensor.div(255.0); // Normalize to [0, 1]
+      tensor = tensor.expandDims(0); // Add batch dimension
 
-      console.log('🎯 AI Results:', mobilenetResults);
+      // Run CIFAR-10 inference
+      const predictionsTensor = model.predict(tensor);
+      const predictionsArray = await predictionsTensor.array();
 
-      // Process results - MobileNet gives ImageNet classes, not CIFAR-10
-      // We'll map the top result to our CIFAR-10 classes for demo
-      const predictions = mobilenetResults.slice(0, 3).map((result, index) => {
-        // Simple mapping for demo - in production you'd use proper class mapping
-        const classMappings = {
-          'airplane': 0, 'aircraft': 0, 'plane': 0,
-          'car': 1, 'automobile': 1, 'vehicle': 1,
-          'bird': 2, 'birdie': 2,
-          'cat': 3, 'feline': 3,
-          'deer': 4, 'doe': 4,
-          'dog': 5, 'puppy': 5, 'hound': 5,
-          'frog': 6, 'toad': 6,
-          'horse': 7, 'equine': 7,
-          'ship': 8, 'boat': 8, 'watercraft': 8,
-          'truck': 9, 'lorry': 9, 'semi': 9
-        };
+      // Clean up tensors
+      tensor.dispose();
+      predictionsTensor.dispose();
 
-        const className = result.className.toLowerCase();
-        let classIndex = Math.floor(Math.random() * 10); // Default fallback
+      const probabilities = predictionsArray[0];
+      console.log('🎯 CIFAR-10 Predictions:', probabilities);
 
-        // Find matching class
-        for (const [key, value] of Object.entries(classMappings)) {
-          if (className.includes(key)) {
-            classIndex = value;
-            break;
-          }
-        }
+      // Create prediction objects for top classes
+      const predictionsWithIndex = probabilities.map((prob, index) => ({
+        classIndex: index,
+        confidence: prob
+      }));
 
-        return {
-          classIndex: classIndex,
-          confidence: result.probability,
-          reasoning: `Real AI: ${result.className} (${Math.round(result.probability * 100)}% confidence)`
-        };
-      });
+      // Sort by confidence and take top 3
+      predictionsWithIndex.sort((a, b) => b.confidence - a.confidence);
+      const topPredictions = predictionsWithIndex.slice(0, 3);
 
-      setPredictions(predictions);
-      console.log('✅ Real AI classification completed!');
+      setPredictions(topPredictions);
+      console.log('✅ CIFAR-10 classification completed!');
 
     } catch (error) {
-      console.error('❌ AI classification failed:', error);
+      console.error('❌ CIFAR-10 classification failed:', error);
       alert('AI classification failed. Please try again.');
     } finally {
       setLoading(false);
