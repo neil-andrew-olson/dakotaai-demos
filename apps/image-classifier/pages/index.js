@@ -659,7 +659,7 @@ export default function Home() {
                             fontWeight: 'bold',
                             color: '#2c3e50'
                           }}>
-                            < 500ms
+                            {'< 500ms'}
                           </div>
                           <div style={{ fontSize: '0.8rem', color: '#6c757d' }}>
                             Response Time
