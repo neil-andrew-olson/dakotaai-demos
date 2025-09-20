@@ -27,29 +27,17 @@ export default function Home() {
       await tf.ready();
 
       // Load the converted CIFAR-10 model
-      try {
-        console.log('Loading trained CIFAR-10 model...');
-        const cifarModel = await tf.loadLayersModel('/tfjs_model/model.json');
-        setModel(cifarModel);
-        console.log('✅ CIFAR-10 model loaded successfully!');
-      } catch (modelError) {
-        console.error('Failed to load CIFAR-10 model:', modelError);
-        console.log('❌ Could not load CIFAR-10 model - classification unavailable');
-        // Try MobileNet fallback
-        try {
-          console.log('Loading MobileNet as fallback...');
-          const mobilenet = await import('@tensorflow-models/mobilenet');
-          const fallbackModel = await mobilenet.load();
-          setModel(fallbackModel);
-          console.log('✅ MobileNet loaded as fallback');
-        } catch (fallbackError) {
-          console.error('All model loading failed:', fallbackError);
-        }
-      }
+      console.log('Loading trained CIFAR-10 model...');
+      const cifarModel = await tf.loadLayersModel('/tfjs_model/model.json');
+      setModel(cifarModel);
+      console.log('✅ CIFAR-10 model loaded successfully!');
 
     } catch (error) {
-      console.error('TensorFlow.js initialization failed:', error);
-      console.log('❌ Could not initialize TensorFlow.js');
+      console.error('Failed to load CIFAR-10 model:', error);
+      console.log('❌ Could not load CIFAR-10 model - classification unavailable');
+
+      // Alert user about the model loading failure
+      alert('Failed to load the AI model. Please refresh the page and try again.');
     }
   }
 
