@@ -10,9 +10,13 @@
   },
   "dependencies": {
     "@tensorflow/tfjs": "^4.13.0",
+    "@tensorflow/tfjs-node": "^4.13.0",
     "next": "^14.0.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "sharp": "^0.33.0",
+    "multer": "^1.4.5-lts.1",
+    "formidable": "^3.5.1"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
