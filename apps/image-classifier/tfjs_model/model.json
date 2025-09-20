@@ -1,1 +1,0 @@
-{"format": "graph-model", "generatedBy": "tfjs-graph-converter", "convertedBy": "TensorFlow.jsConverter v3.13.0", "modelTopology": {"node": [], "library": {}, "versions": {"producer": 2023.0, "minConsumer": 6.0}}, "trainingConfig": {}}

@@ -1,5 +1,4 @@
 {
-  "version": 2,
   "builds": [
     {
       "src": "apps/image-classifier/package.json",
@@ -9,7 +8,7 @@
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/apps/image-classifier/$1"
+      "dest": "/$1"
     }
   ]
 }
