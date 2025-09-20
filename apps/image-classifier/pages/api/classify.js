@@ -1,25 +1,6 @@
 import sharp from 'sharp';
-import * as tf from '@tensorflow/tfjs-node';
 import fs from 'fs';
-import path from 'path';
 import formidable from 'formidable';
-
-let model = null;
-
-// Load model once
-async function loadModel() {
-  if (!model) {
-    try {
-      // For serverless, we'll use a simple CNN approach
-      // In production, you'd load a pre-trained CIFAR-10 model
-      console.log('Model would load here in production');
-      // model = await tf.loadGraphModel('file://./public/tfjs_model/model.json');
-    } catch (error) {
-      console.log('Model loading skipped for demo - using simulated inference');
-    }
-  }
-  return model;
-}
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -40,7 +21,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    await loadModel();
 
     // Parse form data to get uploaded file
     const form = formidable({ multiples: false, maxFileSize: 10 * 1024 * 1024 });
@@ -61,16 +41,8 @@ export default async function handler(req, res) {
       .raw()
       .toBuffer({ resolveWithObject: true });
 
-    // Convert to tensor and normalize
+    // Extract pixel data for analysis
     const { data, info } = processedImage;
-    let tensor = tf.tensor3d(data, [info.height, info.width, 3], 'int32');
-    tensor = tensor.div(255.0); // Normalize to 0-1
-
-    // Add batch dimension
-    const inputTensor = tensor.expandDims(0);
-
-    // For now, simulate model inference since we don't have the actual model loaded
-    // In production, this would be: const predictions = await model.predict(inputTensor);
 
     // Simulate realistic predictions based on simple image features
     const classes = [
@@ -160,9 +132,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // Clean up tensor
-    inputTensor.dispose();
-    tensor.dispose();
+
 
     const response = {
       success: true,
