@@ -4,10 +4,9 @@
   "description": "AI Image Classifier Demo - Transfer Learning with CIFAR-10",
   "scripts": {
     "dev": "next dev",
-    "build": "next build && next export",
+    "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "export": "next build && next export"
+    "lint": "next lint"
   },
   "dependencies": {
     "@tensorflow/tfjs": "^4.13.0",
