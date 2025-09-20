@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd ../.. && npx turbo build --filter=image-classifier",
-  "outputDirectory": "apps/image-classifier/.next",
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
   "framework": "nextjs"
 }
