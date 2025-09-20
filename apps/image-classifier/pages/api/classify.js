@@ -41,113 +41,25 @@ export default async function handler(req, res) {
       .raw()
       .toBuffer({ resolveWithObject: true });
 
-    // Extract pixel data for analysis
-    const { data, info } = processedImage;
+    // Convert processed image back to base64 for client-side AI processing
+    const processedBuffer = await sharp(imageBuffer)
+      .resize(224, 224, { fit: 'fill' }) // MobileNet standard size
+      .jpeg({ quality: 90 })
+      .toBuffer();
 
-    // Simulate realistic predictions based on simple image features
-    const classes = [
-      'Airplane', 'Automobile', 'Bird', 'Cat', 'Deer',
-      'Dog', 'Frog', 'Horse', 'Ship', 'Truck'
-    ];
+    const base64Image = processedBuffer.toString('base64');
+    const imageUrl = `data:image/jpeg;base64,${base64Image}`;
 
-    // Analyze basic image properties for pseudo-intelligent predictions
-    const imageStats = {
-      hasRed: false,
-      hasBlue: false,
-      hasGreen: false,
-      isBright: false,
-      isDark: false
-    };
-
-    // Simple analysis of pixel data
-    const pixelData = Array.from(data);
-    const avgBrightness = pixelData.reduce((sum, val) => sum + val, 0) / pixelData.length;
-    imageStats.isBright = avgBrightness > 128;
-    imageStats.isDark = avgBrightness < 64;
-
-    // Count dominant colors (rough approximation)
-    let redCount = 0, greenCount = 0, blueCount = 0;
-    for (let i = 0; i < pixelData.length; i += 3) {
-      if (pixelData[i] > pixelData[i+1] + pixelData[i+2]) redCount++;
-      if (pixelData[i+1] > pixelData[i] + pixelData[i+2]) greenCount++;
-      if (pixelData[i+2] > pixelData[i] + pixelData[i+1]) blueCount++;
-    }
-    imageStats.hasRed = redCount > pixelData.length / 9;
-    imageStats.hasGreen = greenCount > pixelData.length / 9;
-    imageStats.hasBlue = blueCount > pixelData.length / 9;
-
-    // Generate predictions based on image analysis
-    const predictions = [];
-
-    // Logic for primary prediction
-    let primaryClass = Math.floor(Math.random() * 10);
-    let confidence = 0.7 + Math.random() * 0.25;
-
-    // Pseudo-intelligent reasoning based on image properties
-    let reasoning = "";
-    if (imageStats.isBright && imageStats.hasBlue) {
-      primaryClass = classes.indexOf('Airplane'); // Bright blue = sky/airplane
-      reasoning = "bright blue tones suggesting sky/aircraft";
-      confidence = 0.82;
-    } else if (imageStats.hasGreen) {
-      primaryClass = classes.indexOf('Frog'); // Green = frog
-      reasoning = "dominant green color typical of amphibians";
-      confidence = 0.79;
-    } else if (imageStats.isDark) {
-      primaryClass = Math.random() > 0.5 ? classes.indexOf('Cat') : classes.indexOf('Dog');
-      reasoning = "subdued tones suggesting indoor pet animals";
-      confidence = 0.76;
-    } else {
-      // Default random but weighted predictions
-      const weights = [0.1, 0.15, 0.08, 0.12, 0.08, 0.12, 0.06, 0.08, 0.11, 0.1];
-      const totalWeight = weights.reduce((sum, w) => sum + w, 0);
-      let randomNum = Math.random() * totalWeight;
-      for (let i = 0; i < weights.length; i++) {
-        randomNum -= weights[i];
-        if (randomNum <= 0) {
-          primaryClass = i;
-          break;
-        }
-      }
-      reasoning = "pattern recognition and feature analysis";
-      confidence = 0.73 + Math.random() * 0.22;
-    }
-
-    // Create prediction objects
-    predictions.push({
-      classIndex: primaryClass,
-      confidence: confidence,
-      reasoning: reasoning
-    });
-
-    // Add secondary predictions with lower confidence
-    const remainingClasses = classes.map((_, i) => i).filter(i => i !== primaryClass);
-    for (let i = 0; i < Math.min(2, remainingClasses.length); i++) {
-      const randomIndex = Math.floor(Math.random() * remainingClasses.length);
-      const classIdx = remainingClasses.splice(randomIndex, 1)[0];
-      predictions.push({
-        classIndex: classIdx,
-        confidence: 0.05 + Math.random() * (0.15 - (predictions.length * 0.02)),
-        reasoning: "alternative classification possibility"
-      });
-    }
-
-
-
+    // Return processed image for client-side AI inference
     const response = {
       success: true,
-      predictions: predictions,
-      topPrediction: {
-        class: classes[predictions[0].classIndex],
-        confidence: predictions[0].confidence,
-        reasoning: predictions[0].reasoning
-      },
+      imageUrl: imageUrl,
       modelInfo: {
-        type: 'Simulated CNN (CIFAR-10 features)',
-        dataset: 'CIFAR-10',
-        inputShape: [32, 32, 3],
-        classes: classes.length,
-        status: 'Processing real images with feature analysis'
+        type: 'MobileNet V2 (Real AI)',
+        dataset: 'ImageNet',
+        inputShape: [224, 224, 3],
+        classes: 1000,
+        status: 'Ready for client-side AI inference'
       }
     };
 
