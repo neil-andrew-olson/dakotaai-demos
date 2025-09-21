@@ -68,8 +68,8 @@ export default function Home() {
         reader.readAsDataURL(file);
       });
 
-      // Call Hugging Face API - use environment variable
-      const response = await fetch('https://api-inference.huggingface.co/models/microsoft/resnet-50', {
+      // Call Hugging Face API - use your custom trained CIFAR-10 model
+      const response = await fetch('https://api-inference.huggingface.co/models/TrashHobbit/dakota-ai-cifar10-classifier', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${process.env.HUGGING_FACE_API_KEY}`,
@@ -85,77 +85,77 @@ export default function Home() {
       }
 
       const predictionsArray = await response.json();
-      console.log('🎯 Hugging Face API Response:', predictionsArray);
+      console.log('🎯 Your Custom CIFAR-10 Model Response:', predictionsArray);
 
-      // Map ImageNet classes to CIFAR-10 classes intelligently
-      const imagenetToCifarMappings = {
-        // Airplanes - maps to airplane (0)
-        'airplane': 0, 'aircraft': 0, 'plane': 0, 'jet': 0, 'aeroplane': 0,
-        // Automobiles/Trucks/Cars - maps to automobile (1) or truck (9)
-        'car': 1, 'automobile': 1, 'vehicle': 1, 'auto': 1,
-        'truck': 9, 'lorry': 9, 'tractor': 9, 'semi-trailer': 9,
-        // Animals
-        'cat': 3, 'dog': 5, 'bird': 2, 'horse': 7, 'deer': 4,
-        // Ships/Boats - maps to ship (8)
-        'ship': 8, 'boat': 8, 'yacht': 8, 'vessel': 8,
-        // Frog/toad and other - maps to frog (6)
-        'frog': 6, 'toad': 6,
-      };
-
-      // Map predictions to CIFAR-10 classes
+      // Your custom model outputs direct CIFAR-10 probabilities (10 values)
+      // No mapping needed - these are already the 10 CIFAR-10 class probabilities
       let cifarPredictions = [];
-      let usedClasses = new Set();
 
-      for (const prediction of predictionsArray) {
-        const label = prediction.label.toLowerCase().replace(/\s+/g, ' ').trim();
+      if (Array.isArray(predictionsArray) && predictionsArray.length === 10) {
+        // Direct CIFAR-10 probabilities from your trained model
+        predictionsArray.forEach((probability, index) => {
+          cifarPredictions.push({
+            classIndex: index,
+            confidence: probability
+          });
+        });
+      } else {
+        // Fallback for different response format (still try to map)
+        console.log('⚠️ Unexpected response format, using fallback mapping');
+        const imagenetToCifarMappings = {
+          'airplane': 0, 'aircraft': 0, 'plane': 0, 'jet': 0, 'aeroplane': 0,
+          'car': 1, 'automobile': 1, 'vehicle': 1, 'auto': 1,
+          'truck': 9, 'lorry': 9, 'tractor': 9, 'semi-trailer': 9,
+          'cat': 3, 'dog': 5, 'bird': 2, 'horse': 7, 'deer': 4,
+          'ship': 8, 'boat': 8, 'yacht': 8, 'vessel': 8,
+          'frog': 6, 'toad': 6,
+        };
 
-        // Find matching CIFAR-10 class
-        let cifarClass = null;
-        for (const [inetLabel, classIndex] of Object.entries(imagenetToCifarMappings)) {
-          if (label.includes(inetLabel) && !usedClasses.has(classIndex)) {
-            cifarClass = classIndex;
-            break;
-          }
-        }
-
-        // If no direct mapping, pick the first unused CIFAR-10 class
-        if (cifarClass === null) {
-          for (let i = 0; i < 10; i++) {
-            if (!usedClasses.has(i)) {
-              cifarClass = i;
+        let usedClasses = new Set();
+        for (const prediction of predictionsArray) {
+          const label = prediction.label.toLowerCase().replace(/\s+/g, ' ').trim();
+          let cifarClass = null;
+          for (const [inetLabel, classIndex] of Object.entries(imagenetToCifarMappings)) {
+            if (label.includes(inetLabel) && !usedClasses.has(classIndex)) {
+              cifarClass = classIndex;
               break;
             }
           }
+          if (cifarClass === null) {
+            for (let i = 0; i < 10; i++) {
+              if (!usedClasses.has(i)) {
+                cifarClass = i;
+                break;
+              }
+            }
+          }
+          if (cifarClass !== null) {
+            usedClasses.add(cifarClass);
+            cifarPredictions.push({
+              classIndex: cifarClass,
+              confidence: prediction.score
+            });
+          }
+          if (cifarPredictions.length >= 3) break;
         }
-
-        if (cifarClass !== null) {
-          usedClasses.add(cifarClass);
-          cifarPredictions.push({
-            classIndex: cifarClass,
-            confidence: prediction.score
-          });
-        }
-
-        // Stop at 3 predictions
-        if (cifarPredictions.length >= 3) break;
       }
 
-      // Fill remaining slots with remaining classes if needed
+      // Sort by confidence and take top 3
+      cifarPredictions.sort((a, b) => b.confidence - a.confidence);
+      cifarPredictions = cifarPredictions.slice(0, 3);
+
+      // Fill remaining slots if needed
       while (cifarPredictions.length < 3) {
         for (let i = 0; i < 10; i++) {
-          if (!usedClasses.has(i)) {
+          if (!cifarPredictions.some(p => p.classIndex === i)) {
             cifarPredictions.push({
               classIndex: i,
-              confidence: Math.max(0.1, Math.random() * 0.2) // Low confidence random assignment
+              confidence: Math.max(0.05, Math.random() * 0.1)
             });
-            usedClasses.add(i);
             break;
           }
         }
       }
-
-      // Sort by confidence
-      cifarPredictions.sort((a, b) => b.confidence - a.confidence);
 
       setPredictions(cifarPredictions);
       console.log('✅ Image classification completed with Hugging Face!');
